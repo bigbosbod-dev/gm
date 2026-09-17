@@ -2,18 +2,19 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IAS Machine Architecture - Drag & Drop Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IAS Machine Architecture Quiz</title>
   <style>
     * {
       box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      background-color: #f0f2f5;
+      background-color: #f4f6f9;
       margin: 0;
-      padding: 20px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -21,72 +22,91 @@
 
     h1 {
       color: #2c3e50;
-      margin-bottom: 5px;
+      margin: 5px 0 2px;
+      font-size: 1.3rem;
+      text-align: center;
     }
 
     p.subtitle {
-      color: #555;
-      margin-top: 0;
-      margin-bottom: 20px;
+      color: #666;
+      margin: 0 0 12px;
+      font-size: 0.85rem;
+      text-align: center;
     }
 
-    /* กล่องคำตอบที่ให้ลาก */
+    /* Word Bank */
     .word-bank-container {
       background: white;
-      padding: 16px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      margin-bottom: 25px;
-      max-width: 900px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
       width: 100%;
+      max-width: 860px;
       text-align: center;
     }
 
     .word-bank-title {
+      font-size: 0.85rem;
       font-weight: bold;
       color: #333;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     .word-bank {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 6px;
       justify-content: center;
-      min-height: 45px;
+      min-height: 40px;
     }
 
     .draggable {
       background-color: #3498db;
       color: white;
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 6px;
-      cursor: grab;
-      font-weight: bold;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
       user-select: none;
+      touch-action: none;
       box-shadow: 0 2px 4px rgba(0,0,0,0.15);
       transition: transform 0.15s, background-color 0.2s;
     }
 
-    .draggable:hover {
-      background-color: #2980b9;
-      transform: translateY(-2px);
-    }
-
     .draggable:active {
-      cursor: grabbing;
+      transform: scale(0.96);
     }
 
-    /* พื้นที่ Diagram */
+    /* สไตล์เมื่อกดเลือกคำตอบค้างไว้ (Tap mode) */
+    .draggable.selected {
+      background-color: #f39c12 !important;
+      outline: 3px solid #d35400;
+      transform: scale(1.05);
+    }
+
+    /* Container ครอบไดอะแกรมเพื่อทำ Scale ให้พอดีหน้าจอมือถือ */
+    .diagram-scaler {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: hidden;
+    }
+
+    /* พื้นที่ Diagram พิกัดคงที่ */
     .diagram-board {
       position: relative;
       width: 860px;
       height: 640px;
       background: white;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       border: 1px solid #dcdde1;
-      overflow: hidden;
+      transform-origin: top center;
+      flex-shrink: 0;
     }
 
     /* SVG เส้นเชื่อม */
@@ -100,13 +120,14 @@
       z-index: 1;
     }
 
-    /* กล่องขอบประ (ALU และ Control Unit) */
+    /* กรอบประ ALU และ Control Unit */
     .dashed-group {
       position: absolute;
-      border: 2px dashed #7f8c8d;
-      border-radius: 10px;
-      background: rgba(245, 247, 250, 0.4);
+      border: 2px dashed #95a5a6;
+      border-radius: 8px;
+      background: rgba(245, 247, 250, 0.45);
       z-index: 2;
+      pointer-events: none;
     }
 
     .group-label {
@@ -116,52 +137,54 @@
       color: #555;
     }
 
-    /* กล่องวางคำตอบ (Dropzones) */
+    /* ช่องวาง Dropzone */
     .dropzone {
       position: absolute;
-      border: 2px dashed #95a5a6;
+      border: 2px dashed #bdc3c7;
       border-radius: 6px;
-      background-color: #ffffff;
+      background-color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
-      color: #999;
+      font-size: 12px;
+      color: #aaa;
       z-index: 3;
-      transition: border-color 0.2s, background-color 0.2s;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.2s, border-color 0.2s;
     }
 
-    .dropzone.drag-over {
+    .dropzone.drag-over, .dropzone.tap-highlight {
       border-color: #2ecc71;
       background-color: #e8f8f5;
     }
 
     .dropzone .draggable {
       box-shadow: none;
-      width: 90%;
-      height: 80%;
+      width: 92%;
+      height: 85%;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0;
+      font-size: inherit;
     }
 
-    /* ปุ่มควบคุมและการตรวจคำตอบ */
+    /* ปุ่มควบคุม */
     .actions {
-      margin-top: 20px;
+      margin-top: 15px;
       display: flex;
-      gap: 15px;
+      gap: 12px;
     }
 
     button {
-      padding: 10px 24px;
-      font-size: 15px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
       font-weight: bold;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      transition: background-color 0.2s;
     }
 
     .btn-check {
@@ -169,26 +192,19 @@
       color: white;
     }
 
-    .btn-check:hover {
-      background-color: #27ae60;
-    }
-
     .btn-reset {
       background-color: #e74c3c;
       color: white;
     }
 
-    .btn-reset:hover {
-      background-color: #c0392b;
-    }
-
     #result-msg {
-      margin-top: 15px;
-      font-size: 18px;
+      margin-top: 12px;
+      font-size: 1rem;
       font-weight: bold;
+      text-align: center;
     }
 
-    /* ไฮไลต์ถูก/ผิด */
+    /* ไฮไลต์ตรวจคำตอบ */
     .dropzone.correct {
       border: 2px solid #27ae60 !important;
       background-color: #d4efdf !important;
@@ -208,12 +224,11 @@
 </head>
 <body>
 
-  <h1>IAS Computer Architecture Quiz</h1>
-  <p class="subtitle">ลากกล่องข้อความด้านบนไปวางลงในช่องว่างของไดอะแกรมให้ถูกต้อง</p>
+  <h1>IAS Architecture Quiz</h1>
+  <p class="subtitle">แตะคำตอบแล้วแตะช่องที่ต้องการวาง (หรือลากวางก็ได้)</p>
 
-  <!-- คำตอบสำหรับลาก -->
   <div class="word-bank-container">
-    <div class="word-bank-title">คลังคำตอบ (ลากลงไปวาง):</div>
+    <div class="word-bank-title">คลังคำตอบ:</div>
     <div class="word-bank" id="wordBank">
       <div class="draggable" draggable="true" id="AC">AC</div>
       <div class="draggable" draggable="true" id="MQ">MQ</div>
@@ -229,88 +244,58 @@
     </div>
   </div>
 
-  <!-- ไดอะแกรม -->
-  <div class="diagram-board">
-    <!-- SVG เส้นบัส / สายเชื่อมต่อ -->
-    <svg class="connections">
-      <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#7f8c8d" />
-        </marker>
-        <marker id="arrow-both" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#7f8c8d" />
-        </marker>
-      </defs>
+  <div class="diagram-scaler" id="scaler">
+    <div class="diagram-board" id="board">
+      <svg class="connections">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#7f8c8d" />
+          </marker>
+        </defs>
 
-      <!-- เส้นเชื่อม AC - MQ -->
-      <line x1="180" y1="65" x2="270" y2="65" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <line x1="180" y1="65" x2="270" y2="65" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <line x1="140" y1="90" x2="140" y2="120" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <line x1="310" y1="90" x2="310" y2="120" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <line x1="210" y1="170" x2="210" y2="210" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <line x1="150" y1="365" x2="150" y2="395" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+        <line x1="150" y1="445" x2="150" y2="475" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+        <line x1="285" y1="365" x2="285" y2="395" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <path d="M 300 445 L 300 520 L 450 520" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 200 255 L 200 335 L 175 335" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 185 255 L 185 410 L 175 410" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 235 255 L 235 385 L 250 385" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <path d="M 265 240 L 490 240 L 490 355" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <path d="M 265 220 L 530 220 L 530 195" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+        <path d="M 560 195 L 560 355" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+      </svg>
 
-      <!-- เส้นเชื่อม AC/MQ ไปยัง ALC -->
-      <line x1="140" y1="90" x2="140" y2="120" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-      <line x1="310" y1="90" x2="310" y2="120" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+      <div class="dashed-group" style="left: 45px; top: 20px; width: 370px; height: 250px;">
+        <span class="group-label" style="top: 8px; left: 12px;">Arithmetic Logic Unit (ALU)</span>
+      </div>
 
-      <!-- เส้นเชื่อม ALC ไปยัง MBR -->
-      <line x1="210" y1="170" x2="210" y2="210" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+      <div class="dashed-group" style="left: 45px; top: 290px; width: 370px; height: 320px;">
+        <span class="group-label" style="bottom: 8px; left: 12px;">Program Control Unit</span>
+      </div>
 
-      <!-- เส้นเชื่อม IBR ไปยัง IR -->
-      <line x1="150" y1="365" x2="150" y2="395" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+      <!-- Dropzones -->
+      <div class="dropzone" data-target="AC" style="left: 100px; top: 45px; width: 80px; height: 45px;">[ AC ]</div>
+      <div class="dropzone" data-target="MQ" style="left: 270px; top: 45px; width: 80px; height: 45px;">[ MQ ]</div>
+      <div class="dropzone" data-target="ALC" style="left: 100px; top: 120px; width: 250px; height: 50px;">[ Circuits ]</div>
+      <div class="dropzone" data-target="MBR" style="left: 165px; top: 210px; width: 120px; height: 45px;">[ MBR ]</div>
 
-      <!-- เส้นเชื่อม IR ไปยัง Control circuits -->
-      <line x1="150" y1="445" x2="150" y2="475" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
+      <div class="dropzone" data-target="IBR" style="left: 95px; top: 320px; width: 80px; height: 45px;">[ IBR ]</div>
+      <div class="dropzone" data-target="PC" style="left: 255px; top: 320px; width: 80px; height: 45px;">[ PC ]</div>
+      <div class="dropzone" data-target="IR" style="left: 95px; top: 395px; width: 80px; height: 45px;">[ IR ]</div>
+      <div class="dropzone" data-target="MAR" style="left: 255px; top: 395px; width: 80px; height: 45px;">[ MAR ]</div>
+      <div class="dropzone" data-target="CC" style="left: 95px; top: 480px; width: 105px; height: 55px;">[ Control ]</div>
 
-      <!-- เส้นเชื่อม PC ไปยัง MAR -->
-      <line x1="285" y1="365" x2="285" y2="395" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+      <div class="dropzone" data-target="IO" style="left: 460px; top: 45px; width: 160px; height: 150px;">[ I/O Equipment ]</div>
+      <div class="dropzone" data-target="MM" style="left: 450px; top: 360px; width: 160px; height: 200px;">[ Main Memory ]</div>
 
-      <!-- เส้นเชื่อม MAR ไปยัง Main memory (Addresses) -->
-      <path d="M 300 445 L 300 520 L 450 520" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
-
-      <!-- สาย Bus จาก MBR ลงมายัง IBR, IR, MAR -->
-      <path d="M 200 255 L 200 335 L 175 335" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
-      <path d="M 185 255 L 185 410 L 175 410" fill="none" stroke="#7f8c8d" stroke-width="2" marker-end="url(#arrow)" />
-      <path d="M 235 255 L 235 385 L 250 385" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-
-      <!-- บัส MBR ไป Main Memory (Instructions & Data) -->
-      <path d="M 265 240 L 490 240 L 490 355" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-
-      <!-- บัส MBR ไป I/O Equipment -->
-      <path d="M 265 220 L 530 220 L 530 195" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-
-      <!-- เส้น I/O ไป Memory -->
-      <path d="M 560 195 L 560 355" fill="none" stroke="#7f8c8d" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)" />
-    </svg>
-
-    <!-- กล่องครอบ ALU -->
-    <div class="dashed-group" style="left: 45px; top: 20px; width: 370px; height: 250px;">
-      <span class="group-label" style="top: 10px; left: 15px;">Arithmetic Logic Unit (ALU)</span>
+      <span style="position: absolute; left: 205px; top: 490px; font-size: 11px; color: #666; z-index: 4;">Control<br>signals</span>
+      <span style="position: absolute; left: 345px; top: 505px; font-size: 11px; color: #666; z-index: 4;">Addresses</span>
+      <span style="position: absolute; left: 575px; top: 260px; font-size: 11px; color: #666; z-index: 4;">Instruction<br>and Data</span>
     </div>
-
-    <!-- กล่องครอบ Control Unit -->
-    <div class="dashed-group" style="left: 45px; top: 290px; width: 370px; height: 320px;">
-      <span class="group-label" style="bottom: 10px; left: 15px;">Program Control Unit</span>
-    </div>
-
-    <!-- Dropzones (ตำแหน่งสำหรับวางคำตอบ) -->
-    <!-- ALU Zone -->
-    <div class="dropzone" data-target="AC" style="left: 100px; top: 45px; width: 80px; height: 45px;">[ AC ]</div>
-    <div class="dropzone" data-target="MQ" style="left: 270px; top: 45px; width: 80px; height: 45px;">[ MQ ]</div>
-    <div class="dropzone" data-target="ALC" style="left: 100px; top: 120px; width: 250px; height: 50px;">[ Circuits ]</div>
-    <div class="dropzone" data-target="MBR" style="left: 165px; top: 210px; width: 120px; height: 45px;">[ MBR ]</div>
-
-    <!-- Control Unit Zone -->
-    <div class="dropzone" data-target="IBR" style="left: 95px; top: 320px; width: 80px; height: 45px;">[ IBR ]</div>
-    <div class="dropzone" data-target="PC" style="left: 255px; top: 320px; width: 80px; height: 45px;">[ PC ]</div>
-    <div class="dropzone" data-target="IR" style="left: 95px; top: 395px; width: 80px; height: 45px;">[ IR ]</div>
-    <div class="dropzone" data-target="MAR" style="left: 255px; top: 395px; width: 80px; height: 45px;">[ MAR ]</div>
-    <div class="dropzone" data-target="CC" style="left: 95px; top: 480px; width: 100px; height: 55px;">[ Control ]</div>
-
-    <!-- Right Side (IO & Memory) -->
-    <div class="dropzone" data-target="IO" style="left: 460px; top: 45px; width: 160px; height: 150px;">[ Input-Output ]</div>
-    <div class="dropzone" data-target="MM" style="left: 450px; top: 360px; width: 160px; height: 200px;">[ Main Memory ]</div>
-
-    <!-- ป้ายกำกับสัญญานต่าง ๆ เพิ่มเติมตามรูป -->
-    <span style="position: absolute; left: 205px; top: 490px; font-size: 11px; color: #555; z-index: 4;">Control<br>signals</span>
-    <span style="position: absolute; left: 345px; top: 505px; font-size: 11px; color: #555; z-index: 4;">Addresses</span>
-    <span style="position: absolute; left: 575px; top: 260px; font-size: 11px; color: #555; z-index: 4;">Instruction<br>and Data</span>
   </div>
 
   <div class="actions">
@@ -323,35 +308,81 @@
     const draggables = document.querySelectorAll('.draggable');
     const dropzones = document.querySelectorAll('.dropzone');
     const wordBank = document.getElementById('wordBank');
+    const board = document.getElementById('board');
+    const scaler = document.getElementById('scaler');
 
-    // Drag and Drop Logic
-    draggables.forEach(draggable => {
-      draggable.addEventListener('dragstart', () => {
-        draggable.classList.add('dragging');
+    let selectedDraggable = null;
+
+    // ระบบปรับสเกลอัตโนมัติตามขนาดจอมือถือ
+    function autoScale() {
+      const containerWidth = scaler.clientWidth;
+      const baseWidth = 860;
+      const baseHeight = 640;
+      const scale = Math.min(1, containerWidth / baseWidth);
+      board.style.transform = `scale(${scale})`;
+      scaler.style.height = `${baseHeight * scale}px`;
+    }
+    window.addEventListener('resize', autoScale);
+    window.addEventListener('DOMContentLoaded', autoScale);
+
+    // --- ระบบ Tap-to-Place (แตะเลือกแล้วแตะวาง เหมาะสำหรับมือถือ) ---
+    function selectItem(item) {
+      if (selectedDraggable) {
+        selectedDraggable.classList.remove('selected');
+      }
+      if (selectedDraggable === item) {
+        selectedDraggable = null;
+      } else {
+        selectedDraggable = item;
+        selectedDraggable.classList.add('selected');
+      }
+    }
+
+    draggables.forEach(item => {
+      // แตะเพื่อเลือก
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectItem(item);
       });
 
-      draggable.addEventListener('dragend', () => {
-        draggable.classList.remove('dragging');
+      // รองรับ Drag บน Desktop
+      item.addEventListener('dragstart', () => {
+        item.classList.add('dragging');
+        if (selectedDraggable) selectedDraggable.classList.remove('selected');
+        selectedDraggable = null;
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
       });
     });
 
-    // ให้กล่อง Dropzone แต่ละอันรับการวางได้
     dropzones.forEach(zone => {
+      // แตะกล่องเพื่อวาง
+      zone.addEventListener('click', () => {
+        if (selectedDraggable) {
+          if (zone.children.length > 0) {
+            wordBank.appendChild(zone.children[0]);
+          }
+          zone.appendChild(selectedDraggable);
+          selectedDraggable.classList.remove('selected');
+          selectedDraggable = null;
+        } else if (zone.children.length > 0) {
+          // ถ้าแตะกล่องที่มีของอยู่ ให้ดึงกลับขึ้น word bank
+          wordBank.appendChild(zone.children[0]);
+        }
+      });
+
+      // Desktop Drag & Drop
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
         zone.classList.add('drag-over');
       });
-
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('drag-over');
-      });
-
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
         zone.classList.remove('drag-over');
         const dragging = document.querySelector('.dragging');
         if (dragging) {
-          // ถ้ามีของเดิมอยู่ให้ส่งกลับ wordbank
           if (zone.children.length > 0) {
             wordBank.appendChild(zone.children[0]);
           }
@@ -360,57 +391,56 @@
       });
     });
 
-    // ให้สามารถลากกลับมาไว้ที่ wordbank ได้
-    wordBank.addEventListener('dragover', (e) => {
-      e.preventDefault();
+    // แตะที่คลังคำตอบเพื่อคืนค่า
+    wordBank.parentElement.addEventListener('click', () => {
+      if (selectedDraggable && selectedDraggable.parentElement !== wordBank) {
+        wordBank.appendChild(selectedDraggable);
+        selectedDraggable.classList.remove('selected');
+        selectedDraggable = null;
+      }
     });
 
+    wordBank.addEventListener('dragover', (e) => e.preventDefault());
     wordBank.addEventListener('drop', (e) => {
       e.preventDefault();
       const dragging = document.querySelector('.dragging');
-      if (dragging) {
-        wordBank.appendChild(dragging);
-      }
+      if (dragging) wordBank.appendChild(dragging);
     });
 
     // ตรวจคำตอบ
     function checkAnswers() {
       let correctCount = 0;
-      let total = dropzones.length;
-
       dropzones.forEach(zone => {
         zone.classList.remove('correct', 'wrong');
         const child = zone.querySelector('.draggable');
-        if (child) {
-          if (child.id === zone.dataset.target) {
-            zone.classList.add('correct');
-            correctCount++;
-          } else {
-            zone.classList.add('wrong');
-          }
+        if (child && child.id === zone.dataset.target) {
+          zone.classList.add('correct');
+          correctCount++;
         } else {
           zone.classList.add('wrong');
         }
       });
 
       const msg = document.getElementById('result-msg');
-      if (correctCount === total) {
+      if (correctCount === dropzones.length) {
         msg.style.color = '#27ae60';
-        msg.innerText = `ยินดีด้วย! คุณตอบถูกทั้งหมด (${correctCount}/${total})`;
+        msg.innerText = `เยี่ยมมาก! ถูกต้องทั้งหมด (${correctCount}/${dropzones.length})`;
       } else {
         msg.style.color = '#e74c3c';
-        msg.innerText = `คุณตอบถูก ${correctCount} จาก ${total} ช่อง ลองดูใหม่อีกครั้ง!`;
+        msg.innerText = `ถูก ${correctCount} จาก ${dropzones.length} ช่อง ลองตรวจทานใหม่อีกครั้ง`;
       }
     }
 
-    // รีเซ็ตเกม
+    // เริ่มใหม่
     function resetGame() {
+      if (selectedDraggable) {
+        selectedDraggable.classList.remove('selected');
+        selectedDraggable = null;
+      }
       dropzones.forEach(zone => {
         zone.classList.remove('correct', 'wrong');
         const child = zone.querySelector('.draggable');
-        if (child) {
-          wordBank.appendChild(child);
-        }
+        if (child) wordBank.appendChild(child);
       });
       document.getElementById('result-msg').innerText = '';
     }
